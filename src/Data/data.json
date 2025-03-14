@@ -1,10 +1,11 @@
 {
     "version": {
-        "release": "1.1"
+        "release": "1.2"
     },
     "categories": {},
     "equipment_slots": {},
-    "weapon_classes": {},
+    "weapon_class": {},
+    "armor_class:": {},
     "dice_badges": {},
     "items": {},
     "icons": {}
