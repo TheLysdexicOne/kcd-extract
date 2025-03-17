@@ -2,6 +2,7 @@
 backup/
 bin/
 clarity/
+/config/game_path.json
 logs/
 samples/
 src/data/icons/
