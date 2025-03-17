@@ -1,7 +1,12 @@
 # My ignores
+backup/
+bin/
 clarity/
-src/KCD2/
+logs/
 samples/
+src/data/icons/
+src/data/version.json
+src/data/xml/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
