@@ -1,0 +1,49 @@
+{
+    "version": {
+        "base": ""
+    },
+    "categories": [
+        "MeleeWeapon",
+        "MissileWeapon",
+        "Armor",
+        "Hood",
+        "Die",
+        "DiceBadge"
+    ],
+    "item_types": {
+        "weapons": {
+            "name": "Weapons",
+            "weaponClass": [],
+            "MeleeWeaponClass": {
+                "id": "MeleeWeapon",
+                "name": "Melee Weapons",
+                "weapons": []
+            },
+            "MissileWeaponClass": {
+                "id": "MissileWeapon",
+                "name": "Ranged Weapons",
+                "weapons": []
+            }
+        },
+        "armor": {
+            "name": "Armor",
+            "armorType": []
+        },
+        "dice": {
+            "name": "Dice",
+            "diceBadge": [
+                {
+                    "id": "Die",
+                    "name": "Die"
+                },
+                {
+                    "id": "DiceBadge",
+                    "name": "Dice Badge",
+                    "diceBadgeType": {},
+                    "diceBadgeSubType": {}
+                }
+            ]
+        }
+    },
+    "items": []
+}

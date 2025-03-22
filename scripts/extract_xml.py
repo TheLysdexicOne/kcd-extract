@@ -37,7 +37,7 @@ def extract_files(logger, kcd2_xmls):
     ]
 
     for pak_file, prefix, output_path in pak_files:
-        logger.info(f"Processing PAK file: {pak_file}")
+        logger.info(f"Processing PAK file: {os.path.basename(pak_file)}")
         with zipfile.ZipFile(pak_file, 'r') as pak:
             for file in pak.namelist():
                 if file.startswith(prefix) and file.endswith('.xml') and 'preset' not in file.lower():

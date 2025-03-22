@@ -5,9 +5,7 @@ clarity/
 config/game_path.json
 logs/
 samples/
-src/data/icons/
-src/data/version.json
-src/data/xml/
+src/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
