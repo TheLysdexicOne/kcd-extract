@@ -1,13 +1,13 @@
 import os
 import json
-from logger import logger
 from pathlib import Path
+from logger import logger
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from data_extract import main as data_extraction
-from helper import load_json, save_json, load_data_json, save_data_json, parse_xml, extract_stats, extract_attr
-from helper import should_filter_item, get_subcategory
-from templates.data_json_mappings import item_stats_mapping, item_attr_mapping, stat_transform, attr_transform
+from helper import load_json, save_json, load_data_json, save_data_json, parse_xml
+from helper import extract_data, should_filter_item, get_subcategory, ensure_file_exists
+from templates import construct_item_data, item_stats_mapping, item_attr_mapping, stat_transform, attr_transform
 
 
 def get_version_info(data_dir):
@@ -194,8 +194,9 @@ def xml_dice(kcd2_xmls, output_dir):
     save_data_json(data, data_json_path)
 
 from collections import OrderedDict  # Add this import at the top of the file
+from typing import Dict
 
-def xml_items(kcd2_xmls, output_dir):
+def xml_items(kcd2_xmls: Dict[str, str], output_dir: Path) -> None:
     """Process item XML data and populate the Items category in data.json."""
     logger.info("Processing item XML data...")
 
@@ -204,8 +205,7 @@ def xml_items(kcd2_xmls, output_dir):
 
     # Load existing data.json to get the list of categories
     data_json_path = output_dir / "data.json"
-    if not data_json_path.exists():
-        raise FileNotFoundError(f"data.json not found in {os.path.relpath(output_dir)}")
+    ensure_file_exists(data_json_path, "data.json")
 
     with open(data_json_path, 'r') as f:
         data = json.load(f)
@@ -222,7 +222,7 @@ def xml_items(kcd2_xmls, output_dir):
     }
 
     # Dictionary to store items by ID for quick lookup
-    item_lookup = {}  # Reintroduce item_lookup here
+    item_lookup = {}
 
     # Parse text_ui_items.xml and create a mapping of UIName to ItemName and AltName
     text_ui_items_path = Path(kcd2_xmls.get("text_ui_items"))
@@ -236,14 +236,18 @@ def xml_items(kcd2_xmls, output_dir):
             "AltName": row.find("Cell[2]").text
         }
         for row in text_ui_root.findall(".//Row")
-        if row.find("Cell[1]") is not None and row.find("Cell[3]") is not None
+        if all(row.find(f"Cell[{i}]") is not None for i in [1, 2, 3])
     }
+
+    # Collect missing files
+    missing_files = [file_key for file_key in item_files if file_key not in kcd2_xmls]
+    if missing_files:
+        logger.warning(f"Missing files: {', '.join(missing_files)}. Skipping...")
 
     # Process each relevant item file
     for file_key in item_files:
         if file_key not in kcd2_xmls:
-            logger.warning(f"File ID {file_key} not found in kcd2_xmls. Skipping...")
-            continue
+            continue  # Skip missing files
 
         file_path = Path(kcd2_xmls[file_key])
         if not file_path.exists():
@@ -269,28 +273,16 @@ def xml_items(kcd2_xmls, output_dir):
                         logger.warning(f"Unknown item type: {item_type}. Skipping...")
                         continue
 
-                    # Create an OrderedDict to control key order
-                    item_data = OrderedDict()
-                    attributes = extract_attr(item, item_type, item_attr_mapping, attr_transform, data)
-                    for key, value in attributes.items():
-                        item_data[key] = value
+                    # Extract attributes and stats
+                    attributes = extract_data(item, item_type, item_attr_mapping, attr_transform, data)
+                    stats = extract_data(item, item_type, item_stats_mapping, stat_transform, data)
 
-                    # Add UIName first
-                    uiname = item_data.get("UIName")
-                    if uiname:
-                        item_data.move_to_end("UIName")
-
-                    # Add ItemName and AltName directly beneath UIName
-                    if uiname in text_ui_mapping:
-                        item_data["ItemName"] = text_ui_mapping[uiname]["ItemName"]
-                        item_data["AltName"] = text_ui_mapping[uiname]["AltName"]
-
-                    # Add stats at the end
-                    item_data["stats"] = extract_stats(item, item_type, item_stats_mapping, stat_transform, data)
+                    # Use the centralized function to construct item_data
+                    item_data = construct_item_data(item, attributes, stats, text_ui_mapping)
 
                     # Add the item to the appropriate subcategory and lookup dictionary
                     categorized_items[subcategory].append(item_data)
-                    item_lookup[item_data["Id"]] = item_data  # Populate item_lookup here
+                    item_lookup[item_data["Id"]] = item_data
 
             logger.info(f"Processed items from {file_key} ({os.path.relpath(file_path)})")
         except ET.ParseError as e:

@@ -1,8 +1,15 @@
 import os
 import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from logger import logger
+from functools import lru_cache
+from typing import Dict, List, Union, Tuple, Callable
+import xml.etree.ElementTree as ET
+
+def ensure_file_exists(file_path, description="File"):
+    """Ensure that a file exists, or raise a FileNotFoundError."""
+    if not file_path.exists():
+        raise FileNotFoundError(f"{description} not found: {os.path.relpath(file_path)}")
 
 def load_json(file_path):
     """Load JSON data from a file."""
@@ -20,8 +27,7 @@ def save_json(data, file_path):
 def load_data_json(output_dir):
     """Load the data.json file."""
     data_json_path = output_dir / "data.json"
-    if not data_json_path.exists():
-        raise FileNotFoundError(f"data.json not found in {os.path.relpath(data_json_path)}")
+    ensure_file_exists(data_json_path, "data.json")
     with open(data_json_path, 'r') as f:
         return json.load(f), data_json_path
 
@@ -31,54 +37,51 @@ def save_data_json(data, data_json_path):
         json.dump(data, f, indent=4)
     logger.info(f"Updated data.json saved at {os.path.relpath(data_json_path)}")
 
+@lru_cache(maxsize=None)
 def parse_xml(file_path):
     """Parse an XML file and return the root element."""
-    if not file_path.exists():
-        raise FileNotFoundError(f"XML file not found: {os.path.relpath(file_path)}")
+    ensure_file_exists(file_path, "XML file")
     return ET.parse(file_path).getroot()
 
-def extract_stats(item, item_type, item_stat_mapping, item_transformations, data):
-    """Extract and transform stats for the given item_type, ensuring all stats are integers."""
-    # Combine default stats with specific stats for the item_type
-    stats_to_extract = item_stat_mapping.get("default", []) + item_stat_mapping.get(item_type, [])
-    raw_stats = {stat: item.get(stat) for stat in stats_to_extract if item.get(stat) is not None}
+def extract_data(
+    item: ET.Element,
+    item_type: str,
+    mapping: Dict[str, List[str]],
+    transformations: Dict[str, tuple],
+    data: dict
+) -> Dict[str, Union[str, int, float]]:
+    """Extract and transform data (attributes or stats) for the given item_type."""
+    to_extract = mapping.get("default", []) + mapping.get(item_type, [])
+    raw_data = {}
 
-    # Convert stats to integers where possible
-    int_stats = {}
-    for stat, value in raw_stats.items():
-        try:
-            float_value = float(value)  # Convert to float first
-            # If the float value is a whole number, store it as an int; otherwise, keep it as a float
-            int_stats[stat] = int(float_value) if float_value.is_integer() else float_value
-        except ValueError:
-            logger.warning(f"Failed to convert stat '{stat}' with value '{value}' to a number. Skipping...")
-            continue
-
-    # Apply transformations
-    transformed_stats = apply_transformations(int_stats, item_transformations, data)
-
-    # Combine raw stats with transformed stats
-    return {**int_stats, **transformed_stats}
-
-def extract_attr(item, item_type, item_attr_mapping, attr_transform, data):
-    """Extract consistent attributes shared across all items and specific attributes for the given item_type."""
-    # Combine default attributes with specific attributes for the item_type
-    attrs_to_extract = item_attr_mapping.get("default", []) + item_attr_mapping.get(item_type, [])
-    raw_attrs = {attr: item.get(attr) for attr in attrs_to_extract if item.get(attr) is not None}
+    # Extract raw data and convert numeric values
+    for key in to_extract:
+        value = item.get(key)
+        if value is not None:
+            try:
+                # Convert to float first, then to int if it's a whole number
+                numeric_value = float(value)
+                raw_data[key] = int(numeric_value) if numeric_value.is_integer() else numeric_value
+            except ValueError:
+                # Keep as string if it cannot be converted to a number
+                raw_data[key] = value
 
     # Apply transformations
-    transformed_attrs = apply_transformations(raw_attrs, attr_transform, data)
+    transformed_data = apply_transformations(raw_data, transformations, data)
 
     # Remove original attributes that were transformed
-    for original_attr, (required_attrs, _) in attr_transform.items():
-        for required_attr in required_attrs:
-            if required_attr in raw_attrs:
-                raw_attrs.pop(required_attr)
+    for original_key, (required_keys, _) in transformations.items():
+        for required_key in required_keys:
+            raw_data.pop(required_key, None)
 
-    # Combine raw attributes with transformed attributes
-    return {**raw_attrs, **transformed_attrs}
+    # Combine raw data with transformed data
+    return {**raw_data, **transformed_data}
 
-def apply_transformations(attributes, transformations, data):
+def apply_transformations(
+    attributes: Dict[str, Union[str, int, float]],
+    transformations: Dict[str, Tuple[List[str], Callable[[Dict[str, Union[str, int, float]], dict], Union[dict, int, float]]]],
+    data: dict
+) -> Dict[str, Union[str, int, float]]:
     """Apply transformations to the extracted attributes."""
     transformed = {}
     for key, (required_attrs, formula) in transformations.items():
@@ -104,11 +107,15 @@ def should_filter_item(item):
     ui_info = item.get("UIInfo", "").lower()
     return icon_id in {"trafficcone", "trafficcone"} or ui_info == "ui_in_warning"
 
-def get_subcategory(item_type):
+# Define the subcategory mapping at the module level
+subcategory_mapping = {
+    "MeleeWeapon": "weapons",
+    "MissileWeapon": "weapons",
+    "Armor": "armors",
+    "Die": "dice",
+    "DiceBadge": "dice_badges"
+}
+
+def get_subcategory(item_type: str) -> Union[str, None]:
     """Determine the subcategory for an item."""
-    return (
-        "weapons" if item_type in {"MeleeWeapon", "MissileWeapon"} else
-        "armors" if item_type == "Armor" else
-        "dice" if item_type == "Die" else
-        "dice_badges" if item_type == "DiceBadge" else None
-    )
+    return subcategory_mapping.get(item_type)
