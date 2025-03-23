@@ -1,3 +1,8 @@
-Missing data
+finalize item attributes
+finalize item stats - all stats should integer
+perform relevant calculations for noise, visibility, attack, etc.
 
-Horse "armor_types" 
+
+
+
+Dread the IconId fiasco

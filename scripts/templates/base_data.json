@@ -10,40 +10,16 @@
         "Die",
         "DiceBadge"
     ],
-    "item_types": {
-        "weapons": {
-            "name": "Weapons",
-            "weaponClass": [],
-            "MeleeWeaponClass": {
-                "id": "MeleeWeapon",
-                "name": "Melee Weapons",
-                "weapons": []
-            },
-            "MissileWeaponClass": {
-                "id": "MissileWeapon",
-                "name": "Ranged Weapons",
-                "weapons": []
-            }
-        },
-        "armor": {
-            "name": "Armor",
-            "armorType": []
-        },
-        "dice": {
-            "name": "Dice",
-            "diceBadge": [
-                {
-                    "id": "Die",
-                    "name": "Die"
-                },
-                {
-                    "id": "DiceBadge",
-                    "name": "Dice Badge",
-                    "diceBadgeType": {},
-                    "diceBadgeSubType": {}
-                }
-            ]
-        }
+    "weapon_types": [],
+    "armor_types": [],
+    "dice_badges": {
+        "types": {},
+        "subtypes": {}
     },
-    "items": []
+    "items": {
+        "weapons": [],
+        "armors": [],
+        "dice": [],
+        "dice_badges": []
+    }
 }

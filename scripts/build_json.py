@@ -3,9 +3,11 @@ import json
 from logger import logger
 from pathlib import Path
 import xml.etree.ElementTree as ET
+from collections import OrderedDict
 from data_extract import main as data_extraction
 from helper import load_json, save_json, load_data_json, save_data_json, parse_xml, extract_stats, extract_attr
-from templates.data_json_mappings import item_stats_mapping, item_attr_mapping
+from helper import should_filter_item, get_subcategory
+from templates.data_json_mappings import item_stats_mapping, item_attr_mapping, stat_transform, attr_transform
 
 
 def get_version_info(data_dir):
@@ -94,36 +96,40 @@ def xml_equipment_slot(kcd2_xmls, output_dir):
     root = parse_xml(equipment_slot_path)
 
     # Extract relevant data for Armor
-    armor_slots = []
+    armor_types = []
     for slot in root.findall(".//EquipmentSlot"):
         armor_slot = {
-            "id": int(slot.get("Id")),
-            "name": slot.get("Name"),
-            "ui_body_part_id": slot.get("UIBodyPartId"),
-            "ui_slot": slot.get("UISlot"),
+            "Id": int(slot.get("Id")),
+            "Name": slot.get("Name"),
+            "UIBodyPartId": slot.get("UIBodyPartId"),
+            "UISlot": slot.get("UISlot"),
             "filters": slot.get("ArmorTypes", "").split() if slot.get("ArmorTypes") else []
         }
 
         # Add missing filters for specific IDs
-        if armor_slot["id"] == 13:  # Horse Torso
+        if armor_slot["Name"] == "horse_torso":  # Horse Torso
             armor_slot["filters"].extend(["Caparison", "Harness"])
-        elif armor_slot["id"] == 14:  # Horse Head
+        elif armor_slot["Name"] == "horse_head":  # Horse Head
             armor_slot["filters"].extend(["Bridle", "Chanfron"])
-        elif armor_slot["id"] == 16:  # Horse Saddle
+        elif armor_slot["Name"] == "horse_saddle":  # Horse Saddle
             armor_slot["filters"].extend(["Saddle"])
 
-        # If filters are still empty, append the ui_slot value
-        if not armor_slot["filters"] and armor_slot["ui_slot"]:
-            armor_slot["filters"].append(armor_slot["ui_slot"])
+        # If filters are still empty, append the UISlot value
+        if not armor_slot["filters"] and armor_slot["UISlot"]:
+            armor_slot["filters"].append(armor_slot["UISlot"])
 
-        armor_slots.append(armor_slot)
+        # Skip adding the armor slot if UISlot is null
+        if not armor_slot["UISlot"]:
+            continue
+
+        armor_types.append(armor_slot)
 
     # Sort armor slots by ID
-    armor_slots = sorted(armor_slots, key=lambda x: x["id"])
+    armor_types = sorted(armor_types, key=lambda x: x["Id"])
 
     # Load and update data.json
     data, data_json_path = load_data_json(output_dir)
-    data["item_types"]["armor"]["armorType"] = armor_slots
+    data["armor_types"] = armor_types
     save_data_json(data, data_json_path)
 
 def xml_weapon_info(kcd2_xmls, output_dir):
@@ -143,31 +149,24 @@ def xml_weapon_info(kcd2_xmls, output_dir):
     }
 
     # Extract MeleeWeaponClass and MissileWeaponClass data
-    melee_weapons = [
-        {
-            "id": int(weapon.get("id")),
-            "name": weapon.get("name"),
-            "skill": weapon.get("skill"),
-            "equip_slot": weapon.get("equip_slot")
-        }
-        for weapon in weapon_root.findall(".//MeleeWeaponClass")
-    ]
-
-    missile_weapons = [
-        {
-            "id": int(weapon.get("id")),
-            "name": weapon.get("name"),
-            "skill": weapon.get("skill"),
-            "equip_slot": weapon.get("equip_slot"),
-            "ammo_class": ammo_class_mapping.get(weapon.get("ammo_class"), "Unknown")
-        }
-        for weapon in weapon_root.findall(".//MissileWeaponClass")
-    ]
+    weapon_types = sorted(
+        [
+            {
+                "id": int(weapon.get("id")),
+                "name": weapon.get("name"),
+                "type": weapon.tag.replace("Class", ""),
+                "skill": weapon.get("skill"),
+                "equip_slot": weapon.get("equip_slot"),
+                **({"ammo": ammo_class_mapping.get(weapon.get("ammo_class"))} if weapon.tag == "MissileWeaponClass" else {})
+            }
+            for weapon in weapon_root.findall(".//MeleeWeaponClass") + weapon_root.findall(".//MissileWeaponClass")
+        ],
+        key=lambda x: x["id"]
+    )
 
     # Load and update data.json
     data, data_json_path = load_data_json(output_dir)
-    data["item_types"]["weapons"]["MeleeWeaponClass"]["weapons"] = melee_weapons
-    data["item_types"]["weapons"]["MissileWeaponClass"]["weapons"] = missile_weapons
+    data["weapon_types"] = weapon_types
     save_data_json(data, data_json_path)
 
 def xml_dice(kcd2_xmls, output_dir):
@@ -175,10 +174,8 @@ def xml_dice(kcd2_xmls, output_dir):
     logger.info("Processing dice badge XML data...")
 
     # Parse the dice_badge_type.xml and dice_badge_subtype.xml files
-    dice_badge_type_path = Path(kcd2_xmls.get("dice_badge_type"))
-    dice_badge_subtype_path = Path(kcd2_xmls.get("dice_badge_subtype"))
-    dice_badge_type_root = parse_xml(dice_badge_type_path)
-    dice_badge_subtype_root = parse_xml(dice_badge_subtype_path)
+    dice_badge_type_root = parse_xml(Path(kcd2_xmls.get("dice_badge_type")))
+    dice_badge_subtype_root = parse_xml(Path(kcd2_xmls.get("dice_badge_subtype")))
 
     # Extract dice badge types and subtypes
     dice_badge_types = {
@@ -192,12 +189,11 @@ def xml_dice(kcd2_xmls, output_dir):
 
     # Load and update data.json
     data, data_json_path = load_data_json(output_dir)
-    for badge in data["item_types"]["dice"]["diceBadge"]:
-        if badge["id"] == "DiceBadge":
-            badge["diceBadgeType"] = dice_badge_types
-            badge["diceBadgeSubType"] = dice_badge_subtypes
-            break
+    data["dice_badges"]["types"] = dice_badge_types
+    data["dice_badges"]["subtypes"] = dice_badge_subtypes
     save_data_json(data, data_json_path)
+
+from collections import OrderedDict  # Add this import at the top of the file
 
 def xml_items(kcd2_xmls, output_dir):
     """Process item XML data and populate the Items category in data.json."""
@@ -217,11 +213,33 @@ def xml_items(kcd2_xmls, output_dir):
     # Use the categories list as a filter
     valid_categories = set(data["categories"])
 
-    # Dictionary to store items by ID for quick lookup (to handle ItemAlias)
-    item_lookup = {}
+    # Dictionary to store items by subcategory
+    categorized_items = {
+        "weapons": [],
+        "armors": [],
+        "dice": [],
+        "dice_badges": []
+    }
+
+    # Dictionary to store items by ID for quick lookup
+    item_lookup = {}  # Reintroduce item_lookup here
+
+    # Parse text_ui_items.xml and create a mapping of UIName to ItemName and AltName
+    text_ui_items_path = Path(kcd2_xmls.get("text_ui_items"))
+    if not text_ui_items_path.exists():
+        raise FileNotFoundError(f"text_ui_items.xml not found: {os.path.relpath(text_ui_items_path)}")
+
+    text_ui_root = parse_xml(text_ui_items_path)
+    text_ui_mapping = {
+        row.find("Cell[1]").text: {
+            "ItemName": row.find("Cell[3]").text,
+            "AltName": row.find("Cell[2]").text
+        }
+        for row in text_ui_root.findall(".//Row")
+        if row.find("Cell[1]") is not None and row.find("Cell[3]") is not None
+    }
 
     # Process each relevant item file
-    items = []
     for file_key in item_files:
         if file_key not in kcd2_xmls:
             logger.warning(f"File ID {file_key} not found in kcd2_xmls. Skipping...")
@@ -240,57 +258,46 @@ def xml_items(kcd2_xmls, output_dir):
             for item in root.findall(".//ItemClasses/*"):
                 # Handle regular items
                 if item.tag in valid_categories:
-                    # Apply filters
-                    icon_id = item.get("IconId", "").lower()
-                    ui_info = item.get("UIInfo", "").lower()
-                    if icon_id in {"trafficcone", "trafficcone"} or ui_info == "ui_in_warning":
+                    if should_filter_item(item):
                         continue
 
-                    # If the element is Hood, treat it as Armor
-                    item_type = "Armor" if item.tag == "Hood" else item.tag
+                    # Determine the item type and subcategory
+                    item_type = "Armor" if item.tag in ["Hood", "Helmet"] else item.tag
+                    subcategory = get_subcategory(item_type)
 
-                    # Add the item to the list and lookup dictionary
-                    item_data = {
-                        **extract_attr(item, item_attr_mapping),  # Extract consistent attributes
-                        "Type": item_type,
-                        "stats": extract_stats(item, item_type, item_stats_mapping)
-                    }
-                    items.append(item_data)
-                    item_lookup[item_data["Id"]] = item_data
+                    if subcategory is None:
+                        logger.warning(f"Unknown item type: {item_type}. Skipping...")
+                        continue
 
-                # Handle ItemAlias
-                elif item.tag == "ItemAlias":
-                    source_item_id = item.get("SourceItemId")
-                    if source_item_id in item_lookup:
-                        # Get the source item
-                        source_item = item_lookup[source_item_id]
+                    # Create an OrderedDict to control key order
+                    item_data = OrderedDict()
+                    attributes = extract_attr(item, item_type, item_attr_mapping, attr_transform, data)
+                    for key, value in attributes.items():
+                        item_data[key] = value
 
-                        # Apply filters to the alias itself
-                        icon_id = item.get("IconId", "").lower()
-                        ui_info = item.get("UIInfo", "").lower()
-                        if icon_id in {"trafficcone", "trafficcone"} or ui_info == "ui_in_warning":
-                            continue
+                    # Add UIName first
+                    uiname = item_data.get("UIName")
+                    if uiname:
+                        item_data.move_to_end("UIName")
 
-                        # Create a new item based on the source item, overriding stats with the alias
-                        alias_data = {
-                            "Type": source_item["Type"],
-                            "Id": item.get("Id"),
-                            "Name": item.get("Name"),
-                            "stats": source_item["stats"].copy()  # Start with source stats
-                        }
-                        # Overwrite stats with those from the alias
-                        alias_data["stats"].update(extract_stats(item, source_item["Type"], item_stats_mapping))
+                    # Add ItemName and AltName directly beneath UIName
+                    if uiname in text_ui_mapping:
+                        item_data["ItemName"] = text_ui_mapping[uiname]["ItemName"]
+                        item_data["AltName"] = text_ui_mapping[uiname]["AltName"]
 
-                        # Add the alias as a new item
-                        items.append(alias_data)
-                        item_lookup[alias_data["Id"]] = alias_data
+                    # Add stats at the end
+                    item_data["stats"] = extract_stats(item, item_type, item_stats_mapping, stat_transform, data)
+
+                    # Add the item to the appropriate subcategory and lookup dictionary
+                    categorized_items[subcategory].append(item_data)
+                    item_lookup[item_data["Id"]] = item_data  # Populate item_lookup here
 
             logger.info(f"Processed items from {file_key} ({os.path.relpath(file_path)})")
         except ET.ParseError as e:
             logger.warning(f"Failed to parse {file_key} ({os.path.relpath(file_path)}): {e}")
 
     # Update the Items category in data.json
-    data["items"] = items
+    data["items"] = categorized_items
 
     # Save updated data.json
     with open(data_json_path, 'w') as f:
