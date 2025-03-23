@@ -1,28 +1,28 @@
 import os
 import json
 from pathlib import Path
-from logger import logger
+from utils.logger import logger
 from functools import lru_cache
 from typing import Dict, List, Union, Tuple, Callable
 import xml.etree.ElementTree as ET
 
-def ensure_file_exists(file_path, description="File"):
+def ensure_file_exists(file_dir, description="File"):
     """Ensure that a file exists, or raise a FileNotFoundError."""
-    if not file_path.exists():
-        raise FileNotFoundError(f"{description} not found: {os.path.relpath(file_path)}")
+    if not file_dir.exists():
+        raise FileNotFoundError(f"{description} not found: {os.path.relpath(file_dir)}")
 
-def load_json(file_path):
+def load_json(file_dir):
     """Load JSON data from a file."""
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {os.path.relpath(file_path)}")
-    with open(file_path, 'r') as f:
+    if not file_dir.exists():
+        raise FileNotFoundError(f"File not found: {os.path.relpath(file_dir)}")
+    with open(file_dir, 'r') as f:
         return json.load(f)
 
-def save_json(data, file_path):
+def save_json(data, file_dir):
     """Save JSON data to a file."""
-    with open(file_path, 'w') as f:
+    with open(file_dir, 'w') as f:
         json.dump(data, f, indent=4)
-    logger.info(f"Saved JSON data to {os.path.relpath(file_path)}")
+    logger.info(f"Saved JSON data to {os.path.relpath(file_dir)}")
 
 def load_data_json(output_dir):
     """Load the data.json file."""
@@ -52,7 +52,7 @@ def extract_data(
 ) -> Dict[str, Union[str, int, float]]:
     """Extract and transform data (attributes or stats) for the given item_type."""
     to_extract = mapping.get("default", []) + mapping.get(item_type, [])
-    raw_data = {}
+    raw_data: Dict[str, Union[str, int, float]] = {}  # Explicitly annotate type
 
     # Extract raw data and convert numeric values
     for key in to_extract:
@@ -66,11 +66,14 @@ def extract_data(
                 # Keep as string if it cannot be converted to a number
                 raw_data[key] = value
 
+    logger.debug(f"Raw data before transformations: {raw_data}")
+
     # Apply transformations
     transformed_data = apply_transformations(raw_data, transformations, data)
 
     # Remove original attributes that were transformed
-    for original_key, (required_keys, _) in transformations.items():
+    # Remove original attributes that were transformed
+    for _, (required_keys, _) in transformations.items():
         for required_key in required_keys:
             raw_data.pop(required_key, None)
 
@@ -86,7 +89,7 @@ def apply_transformations(
     transformed = {}
     for key, (required_attrs, formula) in transformations.items():
         # Check if all required attributes are present
-        if all(attr in attributes for attr in required_attrs):
+        if any(attr in attributes for attr in required_attrs):  # Adjusted to check if any required attribute exists
             try:
                 # Apply the formula, passing the data dictionary
                 result = formula(attributes, data)
@@ -96,9 +99,12 @@ def apply_transformations(
                 else:
                     # Otherwise, store the result as a single attribute
                     transformed[key] = result
+                logger.debug(f"Transformation applied for '{key}': {result}")
             except (ValueError, TypeError) as e:
                 logger.warning(f"Failed to apply transformation for '{key}': {e}")
                 continue
+        else:
+            logger.debug(f"Skipping transformation for '{key}': Missing required attributes {required_attrs}")
     return transformed
 
 def should_filter_item(item):

@@ -1,12 +1,12 @@
 import logging
-from logging import Logger, Handler
+from logging import Logger
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
 from typing import List
 
 # Ensure logs directory exists
-LOG_DIR: Path = Path(__file__).resolve().parent.parent / "src/logs"
+LOG_DIR: Path = Path(__file__).resolve().parent.parent.parent / "src/logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Define log files

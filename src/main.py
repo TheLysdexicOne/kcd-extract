@@ -1,15 +1,13 @@
 import os
 import json
 from pathlib import Path
-from logger import logger
 from typing import Dict, List
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
-from data_extract import main as data_extraction
-from helper import load_json, save_json, load_data_json, save_data_json, parse_xml
-from helper import extract_data, should_filter_item, get_subcategory, ensure_file_exists
-from templates import construct_item_data, item_stats_mapping, item_attr_mapping, stat_transform, attr_transform
-
+from utils.logger import logger
+from services.data_extract import data_extract
+from services.helper import load_json, save_json, parse_xml, load_data_json, save_data_json, ensure_file_exists, should_filter_item, extract_data, get_subcategory
+from templates.data_json_mappings import construct_item_data, item_stats_mapping, item_attr_mapping, stat_transform, attr_transform
 
 def get_version_info(data_dir: Path) -> str:
     """
@@ -330,7 +328,7 @@ def main():
     output_dir = data_dir / version
 
     # Run and save data extraction
-    kcd2_xmls, kcd2_icons = data_extraction()
+    kcd2_xmls, kcd2_icons = data_extract()
     export_versioned_data(kcd2_xmls, kcd2_icons, output_dir)
 
     # Initialize a new data.json file

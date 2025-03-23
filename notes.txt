@@ -1,0 +1,3 @@
+Dreading the IconId fiasco
+
+Create static ui_slots in data.json for reference.  Need to use actual in-game ordering and names

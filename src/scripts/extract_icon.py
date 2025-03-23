@@ -6,20 +6,15 @@ import subprocess
 import json
 from PIL import Image
 from pathlib import Path
-
-# Load game path from config
-config_file = Path(__file__).resolve().parent.parent / "config" / "game_path.json"
-with open(config_file, 'r') as f:
-    config = json.load(f)
-game_path = Path(config["game_path"])
+from constants.dir_constants import GAME_DIR
 
 # Define paths
-compressed_icons = game_path / 'Data' / 'IPL_GameData.pak'
+compressed_icons = GAME_DIR / 'Data' / 'IPL_GameData.pak'
 
 # Define base paths
-base_dir = Path(__file__).resolve().parent.parent
-dds_unsplitter_path = base_dir / 'bin/DDS-Unsplitter.exe'
-texconv_path = base_dir / 'bin/texconv.exe'  # Path to texconv.exe
+base_dir = Path(__file__).resolve().parent.parent.parent
+dds_unsplitter_path = base_dir / 'src/bin/DDS-Unsplitter.exe'
+texconv_path = base_dir / 'src/bin/texconv.exe'  # Path to texconv.exe
 
 output_dir = base_dir / 'src/data/icons'
 temp_dds_dir = output_dir / 'temp'
@@ -43,7 +38,7 @@ def process_icons(logger, kcd2_icons):
     convert_fail_count = 0
     convert_skipped_count = 0
 
-    def process_icons():
+    def extract_icons_from_pak():
         nonlocal convert_skipped_count
         logger.info("Processing Icons...")
         with zipfile.ZipFile(compressed_icons, 'r') as pak:
@@ -134,7 +129,7 @@ def process_icons(logger, kcd2_icons):
                     logger.error(f"Failed to convert {os.path.basename(dds_file_path)} to BC7_UNORM using texconv.exe: {e}")
                     convert_fail_count += 1
 
-    process_icons()
+    extract_icons_from_pak()
 
     # Check if there are files in temp_dds_dir before proceeding
     if not is_empty_directory_tree(temp_dds_dir):

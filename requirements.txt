@@ -1,6 +1,2 @@
-./bin/DDS-Unsplitter.exe    # Merges split DDS files into a single DDS file
-./bin/texconv.exe           # Converts DDS files into a readable format for Pillow
-./bin/texdiag.exe           # Diagnoses DDS files
-
-Installation of Kingdom Come: Deliverance 2
-Run find_game.py first to create ./config/game_path.json
+Pillow
+mypy

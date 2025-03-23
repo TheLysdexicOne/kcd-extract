@@ -1,9 +1,0 @@
-finalize item attributes
-finalize item stats - all stats should integer
-perform relevant calculations for noise, visibility, attack, etc.
-
-
-
-
-Dread the IconId fiasco
-

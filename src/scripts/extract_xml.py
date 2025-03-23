@@ -1,27 +1,21 @@
 import os
 import zipfile
-import json
 from pathlib import Path
-
-# Load game path from config
-config_file = Path(__file__).resolve().parent.parent / "config" / "game_path.json"
-with open(config_file, 'r') as f:
-    config = json.load(f)
-game_path = Path(config["game_path"])
+from constants.dir_constants import GAME_DIR
 
 # Define paths
-tables_pak = game_path / 'Data' / 'Tables.pak'
-english_localization_pak = game_path / 'Localization' / 'English_xml.pak'
+tables_pak = GAME_DIR / 'Data' / 'Tables.pak'
+english_localization_pak = GAME_DIR / 'Localization' / 'English_xml.pak'
 
 # Define base paths
-base_dir = Path(__file__).resolve().parent.parent
-output_dir = base_dir / 'src/data/xml'
+base_dir = Path(__file__).resolve().parent.parent.parent
+xml_output_dir = base_dir / 'src/data/xml'
 
 # Ensure output directories exist
-output_dir.mkdir(parents=True, exist_ok=True)
+xml_output_dir.mkdir(parents=True, exist_ok=True)
 
 # Initialize the KCD2 files structure
-kcd2_xmls = {}
+kcd2_xmls: dict[str, str] = {}
 
 def extract_files(logger, kcd2_xmls):
     copied_files = 0
@@ -32,8 +26,8 @@ def extract_files(logger, kcd2_xmls):
 
     # Define the list of pak files to process
     pak_files = [
-        (english_localization_pak, 'text_ui_items.xml', output_dir / 'text_ui_items.xml'),
-        (tables_pak, 'Libs/Tables/item/', output_dir)
+        (english_localization_pak, 'text_ui_items.xml', xml_output_dir / 'text_ui_items.xml'),
+        (tables_pak, 'Libs/Tables/item/', xml_output_dir)
     ]
 
     for pak_file, prefix, output_path in pak_files:

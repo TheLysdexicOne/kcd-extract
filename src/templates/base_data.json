@@ -10,6 +10,13 @@
         "Die",
         "DiceBadge"
     ],
+    "inventory_slots": [
+        {
+            "Id": 0,
+            "Name": "Head",
+            "Subtext": "Cap or Helmet"
+        }
+    ],
     "weapon_types": [],
     "armor_types": [],
     "dice_badges": {

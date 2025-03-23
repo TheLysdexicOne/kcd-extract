@@ -1,12 +1,15 @@
 # My ignores
+.misc/
 backup/
 bin/
-clarity/
 config/game_path.json
 logs/
-samples/
-src/data/
+src/data/*
 mypy.ini
+test.py
+
+# Exceptions
+!src/data/1.2
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

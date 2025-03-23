@@ -1,21 +1,16 @@
 import os
 import json
 from datetime import datetime
-from logger import logger
-import extract_xml
-import extract_icon
+from utils.logger import logger
 from pathlib import Path
+from constants.dir_constants import GAME_DIR
+from scripts.extract_xml import extract_files
+from scripts.extract_icon import process_icons
 import shutil
 
-def main():
-    # Load game path from config
-    config_file = Path(__file__).resolve().parent.parent / "config" / "game_path.json"
-    with open(config_file, 'r') as f:
-        config = json.load(f)
-    game_path = Path(config["game_path"])
-
+def data_extract():
     # Define base paths
-    base_dir = Path(__file__).resolve().parent.parent
+    base_dir = Path(__file__).resolve().parent.parent.parent
     log_dir = base_dir / 'src/logs'
     data_dir = base_dir / 'src/data'
     xml_dir = data_dir / 'xml'
@@ -32,7 +27,7 @@ def main():
     kcd2_icons = {}
 
     # Compare version files
-    game_version_file = game_path / 'whdlversions.json'
+    game_version_file = GAME_DIR / 'whdlversions.json'
     data_version_file = data_dir / 'version.json'
 
     try:
@@ -82,7 +77,7 @@ def main():
     # Run XML extraction
     try:
         logger.info("Starting XML extraction process.")
-        copied_files, skipped_files, failed_files, kcd2_xmls = extract_xml.extract_files(logger, kcd2_xmls)
+        copied_files, skipped_files, failed_files, kcd2_xmls = extract_files(logger, kcd2_xmls)
         summary_processed_xml = f"Summary of processed XML files: Success: {copied_files}, Skipped: {skipped_files}, Fail: {failed_files}"
         logger.info(summary_processed_xml)
     except Exception as e:
@@ -91,7 +86,7 @@ def main():
     # Run icon extraction
     try:
         logger.info("Starting icon extraction process.")
-        merge_success_count, merge_fail_count, convert_success_count, convert_fail_count, convert_skipped_count, kcd2_icons = extract_icon.process_icons(logger, kcd2_icons)
+        merge_success_count, merge_fail_count, convert_success_count, convert_fail_count, convert_skipped_count, kcd2_icons = process_icons(logger, kcd2_icons)
         summary_merge_dds = f"Summary of merged DDS files: Success: {merge_success_count}, Skipped: 0, Fail: {merge_fail_count}"
         summary_convert_dds = f"Summary of converted DDS files: Success: {convert_success_count}, Skipped: {convert_skipped_count}, Fail: {convert_fail_count}"
         final_success_count = convert_success_count + merge_success_count
@@ -128,4 +123,4 @@ def main():
     return kcd2_xmls, kcd2_icons
 
 if __name__ == "__main__":
-    main()
+    data_extract()

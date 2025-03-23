@@ -26,7 +26,6 @@ def construct_item_data(
     text_ui_mapping: Dict[str, Dict[str, Optional[str]]]
 ) -> OrderedDict:
     """Construct an OrderedDict for item data with the desired key order."""
-    uiname = attributes.get("UIName")
     ordered_attributes = construct_ordered_data(attributes, priority_attributes)
     return OrderedDict([
         *ordered_attributes.items(),  # Add ordered attributes
@@ -55,9 +54,11 @@ item_attr_mapping = {
 
 # Attribute transformations
 attr_transform = {
-    "Type": (["Class"], lambda attrs, data: int(attrs["Class"])), # Rename "Class" to "Type" and integer
-    "Type": (["Type"], lambda attrs, data: int(attrs["Type"])), # Type to integer
-    "SubType": (["SubType"], lambda attrs, data: int(attrs["SubType"])) # Subtype to Integer
+    "Type": (
+        ["Class", "Type"],  # Include both "Class" and "Type" as possible attributes
+        lambda attrs, data: int(attrs["Class"]) if "Class" in attrs else int(attrs["Type"]) if "Type" in attrs else None
+    ),
+    "SubType": (["SubType"], lambda attrs, data: int(attrs["SubType"]))  # Subtype to Integer
 }
 
 priority_stats = [
