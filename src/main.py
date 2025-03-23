@@ -51,14 +51,14 @@ def export_versioned_data(kcd2_xmls: Dict[str, str], kcd2_icons: Dict[str, str],
     """
     Save kcd2_xmls and kcd2_icons to the versioned output directory.
     """
-    kcd2_xmls_path = output_dir / "kcd2_xmls.json"
-    kcd2_icons_path = output_dir / "kcd2_icons.json"
+    kcd2_xmls_file = output_dir / "kcd2_xmls.json"
+    kcd2_icons_file = output_dir / "kcd2_icons.json"
 
     # Save XMLs and icons data
-    for data, path, label in [(kcd2_xmls, kcd2_xmls_path, "kcd2_xmls"), (kcd2_icons, kcd2_icons_path, "kcd2_icons")]:
-        with open(path, 'w') as f:
+    for data, file, label in [(kcd2_xmls, kcd2_xmls_file, "kcd2_xmls"), (kcd2_icons, kcd2_icons_file, "kcd2_icons")]:
+        with open(file, 'w') as f:
             json.dump(data, f, indent=4)
-        logger.info(f"Saved {label} to {os.path.relpath(path)}")
+        logger.info(f"Saved {label} to {os.path.relpath(file)}")
 
 def initialize_data_json(version: str, output_dir: Path) -> Path:
     """
@@ -67,26 +67,26 @@ def initialize_data_json(version: str, output_dir: Path) -> Path:
     logger.info("Initializing a new data.json file from base_data.json...")
 
     # Path to the base_data.json template
-    base_data_path = Path(__file__).resolve().parent / "templates/base_data.json"
+    base_data_file = Path(__file__).resolve().parent / "templates/base_data.json"
 
     # Ensure the base template exists
-    if not base_data_path.exists():
-        raise FileNotFoundError(f"Base data.json template not found: {base_data_path}")
+    if not base_data_file.exists():
+        raise FileNotFoundError(f"Base data.json template not found: {base_data_file}")
 
     # Load the base template
-    with open(base_data_path, 'r') as f:
+    with open(base_data_file, 'r') as f:
         base_data = json.load(f)
 
     # Update the version in the data structure
     base_data["version"]["base"] = version
 
     # Save the new data.json file
-    data_json_path = output_dir / "data.json"
-    with open(data_json_path, 'w') as f:
+    data_json_file = output_dir / "data.json"
+    with open(data_json_file, 'w') as f:
         json.dump(base_data, f, indent=4)
 
-    logger.info(f"New data.json created at {os.path.relpath(data_json_path)}")
-    return data_json_path
+    logger.info(f"New data.json created at {os.path.relpath(data_json_file)}")
+    return data_json_file
 
 def xml_equipment_slot(kcd2_xmls, output_dir):
     """Process equipment slot XML data and populate the Armor item_type in data.json."""

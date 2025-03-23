@@ -4,8 +4,8 @@ from pathlib import Path
 from constants.dir_constants import GAME_DIR
 
 # Define paths
-tables_pak = GAME_DIR / 'Data' / 'Tables.pak'
-english_localization_pak = GAME_DIR / 'Localization' / 'English_xml.pak'
+tables_pak_file = GAME_DIR / 'Data' / 'Tables.pak'
+english_localization_pak_file = GAME_DIR / 'Localization' / 'English_xml.pak'
 
 # Define base paths
 base_dir = Path(__file__).resolve().parent.parent.parent
@@ -26,8 +26,8 @@ def extract_files(logger, kcd2_xmls):
 
     # Define the list of pak files to process
     pak_files = [
-        (english_localization_pak, 'text_ui_items.xml', xml_output_dir / 'text_ui_items.xml'),
-        (tables_pak, 'Libs/Tables/item/', xml_output_dir)
+        (english_localization_pak_file, 'text_ui_items.xml', xml_output_dir / 'text_ui_items.xml'),
+        (tables_pak_file, 'Libs/Tables/item/', xml_output_dir)
     ]
 
     for pak_file, prefix, output_path in pak_files:

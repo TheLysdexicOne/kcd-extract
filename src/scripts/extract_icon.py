@@ -9,12 +9,12 @@ from pathlib import Path
 from constants.dir_constants import GAME_DIR
 
 # Define paths
-compressed_icons = GAME_DIR / 'Data' / 'IPL_GameData.pak'
+compressed_icons_file = GAME_DIR / 'Data' / 'IPL_GameData.pak'
 
 # Define base paths
 base_dir = Path(__file__).resolve().parent.parent.parent
-dds_unsplitter_path = base_dir / 'src/bin/DDS-Unsplitter.exe'
-texconv_path = base_dir / 'src/bin/texconv.exe'  # Path to texconv.exe
+dds_unsplitter_file = base_dir / 'src/bin/DDS-Unsplitter.exe'
+texconv_file = base_dir / 'src/bin/texconv.exe'  # Path to texconv.exe
 
 output_dir = base_dir / 'src/data/icons'
 temp_dds_dir = output_dir / 'temp'
@@ -41,7 +41,7 @@ def process_icons(logger, kcd2_icons):
     def extract_icons_from_pak():
         nonlocal convert_skipped_count
         logger.info("Processing Icons...")
-        with zipfile.ZipFile(compressed_icons, 'r') as pak:
+        with zipfile.ZipFile(compressed_icons_file, 'r') as pak:
             for file in pak.namelist():
                 if file.startswith('Libs/UI/Textures/Icons/Items/'):
                     file_path = (temp_dds_dir / os.path.relpath(file, 'Libs/UI/Textures/Icons/Items')).as_posix()
@@ -85,7 +85,7 @@ def process_icons(logger, kcd2_icons):
                 if file.endswith('.dds'):
                     dds_file_path = os.path.join(root, file)
                     try:
-                        process = subprocess.Popen([str(dds_unsplitter_path), dds_file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        process = subprocess.Popen([str(dds_unsplitter_file), dds_file_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         for line in process.stdout:
                             logger.debug(f"DDS-Unsplitter.exe - {line.decode().strip()}")
                         for line in process.stderr:
@@ -112,7 +112,7 @@ def process_icons(logger, kcd2_icons):
             dds_file_path = os.path.join(temp_dds_dir, file)
             if os.path.isfile(dds_file_path) and file.endswith('.dds'):
                 try:
-                    texconv_command = [str(texconv_path), '-f', 'BC7_UNORM', '-y', '-o', str(conv_dds_dir), str(dds_file_path)]
+                    texconv_command = [str(texconv_file), '-f', 'BC7_UNORM', '-y', '-o', str(conv_dds_dir), str(dds_file_path)]
                     process = subprocess.Popen(texconv_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     for line in process.stdout:
                         logger.debug(f"texconv.exe - {line.decode().strip()}")

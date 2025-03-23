@@ -26,16 +26,16 @@ def save_json(data, file_dir):
 
 def load_data_json(output_dir):
     """Load the data.json file."""
-    data_json_path = output_dir / "data.json"
-    ensure_file_exists(data_json_path, "data.json")
-    with open(data_json_path, 'r') as f:
-        return json.load(f), data_json_path
+    data_json_file = output_dir / "data.json"
+    ensure_file_exists(data_json_file, "data.json")
+    with open(data_json_file, 'r') as f:
+        return json.load(f), data_json_file
 
-def save_data_json(data, data_json_path):
+def save_data_json(data, data_json_file):
     """Save the updated data.json file."""
-    with open(data_json_path, 'w') as f:
+    with open(data_json_file, 'w') as f:
         json.dump(data, f, indent=4)
-    logger.info(f"Updated data.json saved at {os.path.relpath(data_json_path)}")
+    logger.info(f"Updated data.json saved at {os.path.relpath(data_json_file)}")
 
 @lru_cache(maxsize=None)
 def parse_xml(file_path):
@@ -71,7 +71,6 @@ def extract_data(
     # Apply transformations
     transformed_data = apply_transformations(raw_data, transformations, data)
 
-    # Remove original attributes that were transformed
     # Remove original attributes that were transformed
     for _, (required_keys, _) in transformations.items():
         for required_key in required_keys:
