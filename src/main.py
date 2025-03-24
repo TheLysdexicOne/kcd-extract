@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 import xml.etree.ElementTree as ET
 from collections import OrderedDict
 from utils.logger import logger
@@ -229,22 +229,25 @@ def xml_items(kcd2_xmls: Dict[str, str], output_dir: Path) -> None:
     item_lookup = {}
 
     # Parse text_ui_items.xml and create a mapping of UIName to ItemName and AltName
-    text_ui_items_path = kcd2_xmls.get("text_ui_items")
-    if text_ui_items_path is None:
-        raise FileNotFoundError("Key 'text_ui_items' is missing in kcd2_xmls.")
-    text_ui_items_path = Path(text_ui_items_path)  # Ensure it's a Path object
+    text_ui_items_path = Path(kcd2_xmls["text_ui_items"])
     if not text_ui_items_path.exists():
         raise FileNotFoundError(f"text_ui_items.xml not found: {os.path.relpath(text_ui_items_path)}")
 
     text_ui_root = parse_xml(text_ui_items_path)
-    text_ui_mapping = {
-        row.find("Cell[1]").text: {
-            "ItemName": row.find("Cell[3]").text,
-            "AltName": row.find("Cell[2]").text
-        }
-        for row in text_ui_root.findall(".//Row")
-        if all(row.find(f"Cell[{i}]") is not None for i in [1, 2, 3])
-    }
+    text_ui_mapping = {}
+    for row in text_ui_root.findall(".//Row"):
+        if all(row.find(f"Cell[{i}]") is not None for i in [1, 2, 3]):
+            ui_name = row.find("Cell[1]").text
+            item_name = row.find("Cell[3]").text
+            alt_name = row.find("Cell[2]").text
+
+            if not item_name or not alt_name:
+                logger.warning(f"UIName '{ui_name}' has missing ItemName or AltName.")
+
+            text_ui_mapping[ui_name] = {
+                "ItemName": item_name,
+                "AltName": alt_name
+            }
 
     # Collect missing files
     missing_files = [file_key for file_key in item_files if file_key not in kcd2_xmls]
